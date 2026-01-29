@@ -21,13 +21,23 @@ import shlex
 import re
 from typing import Any, Dict, Optional, Tuple
 import statistics
-
+import pdb
+import cgitb
 
 class MagicHandler:
     """Handles execution of magic commands with proper namespace management"""
     
     def __init__(self):
         self.last_execution_time = None
+
+        # Default exception mode
+        self.xmode = 'context' 
+        
+        # Save original hook just in case
+        self._original_excepthook = sys.excepthook
+        
+        # Install our Global Exception Interceptor
+        sys.excepthook = self._custom_excepthook
         
     def _get_caller_namespace(self) -> Dict[str, Any]:
         """
@@ -39,8 +49,15 @@ class MagicHandler:
         # 1 = _magic_* method
         # 2 = line_magic/cell_magic
         # 3 = exec_and_print_last or user code
-        frame = sys._getframe(3)
-        return frame.f_globals
+        # 4 = to reach the notebook code
+        try:
+            frame = sys._getframe(4)
+        except ValueError:
+            frame = sys._getframe(3)
+
+        ns= frame.f_globals.copy()
+        ns.update(frame.f_locals)
+        return ns
         
     def line_magic(self, command: str, args: str) -> Any:
         """Execute a line magic command"""
@@ -61,6 +78,34 @@ class MagicHandler:
         else:
             print(f"UsageError: Cell magic function `%%{command}` not found.", file=sys.stderr)
             return None
+        
+    def _custom_excepthook(self, etype, evalue, tb):
+        """
+        Global exception handler that respects %xmode logic.
+        """
+        # Always save the traceback so %debug can find it later!
+        sys.last_type = etype
+        sys.last_value = evalue
+        sys.last_traceback = tb
+
+        # Handle different modes
+        if self.xmode == 'plain':
+            # Just the error message, no stack trace 
+            print(f"{etype.__name__}: {evalue}", file=sys.stderr)
+            
+        elif self.xmode == 'verbose':
+            # Detailed stack trace with local variable values
+            try:
+                # cgitb formats detailed tracebacks in plain text
+                hook = cgitb.Hook(format="text", file=sys.stderr)
+                hook.handle((etype, evalue, tb))
+            except Exception:
+                # Fallback if cgitb fails
+                traceback.print_exception(etype, evalue, tb, file=sys.stderr)
+                
+        else: # 'context' (Default)
+            # Standard Python traceback
+            traceback.print_exception(etype, evalue, tb, file=sys.stderr)
     
     # ============ LINE MAGICS ============
     
@@ -197,9 +242,13 @@ class MagicHandler:
             wall_time = time.perf_counter() - start_time
             cpu_time = time.process_time() - start_process
             
+            # Format all times
+            cpu_disp = self._format_time(cpu_time)
+            wall_disp = self._format_time(wall_time)
+
             # Format similar to IPython
-            print(f"CPU times: user {cpu_time:.2f} s, sys: 0.00 s, total: {cpu_time:.2f} s")
-            print(f"Wall time: {wall_time:.2f} s")
+            print(f"CPU times: total: {cpu_disp}")
+            print(f"Wall time: {wall_disp}")
             self.last_execution_time = wall_time
     
     def _parse_timeit_args(self, args: str) -> Tuple[int, int, str]:
@@ -355,6 +404,20 @@ class MagicHandler:
         print(f"{time_val:.2f} {unit} ± {stdev_val:.2f} {unit} per loop "
               f"(mean ± std. dev. of {repeat} {runs_text}, {number} {loops_text} each)")
     
+    # Add this helper method to your class
+    def _format_time(self, timespan: float, precision: int = 2) -> str:
+        """
+        Formats a time duration with appropriate units (ns, µs, ms, s).
+        """
+        if timespan >= 1:
+            return f"{timespan:.{precision}f} s"
+        elif timespan >= 1e-3:
+            return f"{timespan * 1e3:.{precision}f} ms"
+        elif timespan >= 1e-6:
+            return f"{timespan * 1e6:.{precision}f} µs"
+        else:
+            return f"{timespan * 1e9:.{precision}f} ns"
+
     def _magic_run(self, args: str) -> None:
         """Run a Python file in the current namespace"""
         filename = args.strip()
@@ -419,21 +482,30 @@ class MagicHandler:
     def _magic_xmode(self, args: str) -> None:
         """Set exception mode (placeholder)"""
         mode = args.strip().lower()
-        
         valid_modes = ['plain', 'context', 'verbose']
-        if mode and mode in valid_modes:
+
+        if mode in valid_modes:
+            self.xmode = mode
             print(f"Exception reporting mode: {mode}")
-            # In a real implementation, this would modify sys.excepthook
-        elif mode:
-            print(f"Error: Invalid mode '{mode}'. Valid modes: {', '.join(valid_modes)}", 
-                  file=sys.stderr)
+        elif not mode:
+            print(f"Current exception mode: {self.xmode}")
         else:
-            print("Current exception mode: context")
+            print(f"Error: Invalid mode '{mode}'. Valid modes: {', '.join(valid_modes)}", file=sys.stderr)
     
     def _magic_debug(self, args: str) -> None:
-        """Enter debugger (limited in browser)"""
-        print("Note: Interactive debugging is limited in browser environments.")
-        print("Consider using print statements or logging for debugging.")
+        """
+        Activate the interactive debugger.
+        This works because your worker handles blocking input()!
+        """
+        # Check if we have a traceback saved from a previous crash
+        if not hasattr(sys, 'last_traceback') or sys.last_traceback is None:
+            print("No traceback has been saved. Run code that crashes first.", file=sys.stderr)
+            return
+
+        print("Entering interactive debugger (pdb). Type 'q' to quit.")
+        
+        # Launch debugger on the last crash
+        pdb.post_mortem(sys.last_traceback)   
     
     def _magic_pip(self, args: str) -> None:
         """Install packages using micropip"""
@@ -452,7 +524,7 @@ class MagicHandler:
             for pkg in packages:
                 print(f"Installing {pkg}...")
                 try:
-                    micropip.install(pkg)
+                    return micropip.install(pkg)
                     print(f"Successfully installed {pkg}")
                 except Exception as e:
                     print(f"Error installing {pkg}: {e}", file=sys.stderr)
@@ -489,8 +561,12 @@ class MagicHandler:
             wall_time = time.perf_counter() - start_time
             cpu_time = time.process_time() - start_process
             
-            print(f"CPU times: user {cpu_time:.2f} s, sys: 0.00 s, total: {cpu_time:.2f} s")
-            print(f"Wall time: {wall_time:.2f} s")
+            # Format all times
+            cpu_disp = self._format_time(cpu_time)
+            wall_disp = self._format_time(wall_time)
+
+            print(f"CPU times: total: {cpu_disp}")
+            print(f"Wall time: {wall_disp}")
     
     def _cell_magic_timeit(self, code: str) -> None:
         """
