@@ -33,131 +33,131 @@ sections:
 # =====================
 # NumPy
 # =====================
-- file: notebooks/Introduction to NumPy/02.00-Introduction-to-NumPy
+- file: notebooks/Introduction_to_NumPy/02.00-Introduction-to-NumPy
   title: Introduction to NumPy
   sections:
-    - file: notebooks/Introduction to NumPy/02.01-Understanding-Data-Types
+    - file: notebooks/Introduction_to_NumPy/02.01-Understanding-Data-Types
       title: Understanding Data Types
-    - file: notebooks/Introduction to NumPy/02.02-The-Basics-Of-NumPy-Arrays
+    - file: notebooks/Introduction_to_NumPy/02.02-The-Basics-Of-NumPy-Arrays
       title: Basics of NumPy Arrays
-    - file: notebooks/Introduction to NumPy/02.03-Computation-on-arrays-ufuncs
+    - file: notebooks/Introduction_to_NumPy/02.03-Computation-on-arrays-ufuncs
       title: Computation on Arrays (ufuncs)
-    - file: notebooks/Introduction to NumPy/02.04-Computation-on-arrays-aggregates
+    - file: notebooks/Introduction_to_NumPy/02.04-Computation-on-arrays-aggregates
       title: Aggregations
-    - file: notebooks/Introduction to NumPy/02.05-Computation-on-arrays-broadcasting
+    - file: notebooks/Introduction_to_NumPy/02.05-Computation-on-arrays-broadcasting
       title: Broadcasting
-    - file: notebooks/Introduction to NumPy/02.06-Boolean-Arrays-and-Masks
+    - file: notebooks/Introduction_to_NumPy/02.06-Boolean-Arrays-and-Masks
       title: Boolean Arrays and Masks
-    - file: notebooks/Introduction to NumPy/02.07-Fancy-Indexing
+    - file: notebooks/Introduction_to_NumPy/02.07-Fancy-Indexing
       title: Fancy Indexing
-    - file: notebooks/Introduction to NumPy/02.08-Sorting
+    - file: notebooks/Introduction_to_NumPy/02.08-Sorting
       title: Sorting
-    - file: notebooks/Introduction to NumPy/02.09-Structured-Data-NumPy
+    - file: notebooks/Introduction_to_NumPy/02.09-Structured-Data-NumPy
       title: Structured Data
 
 # =====================
 # Pandas
 # =====================
-- file: notebooks/Data Manipulation with Pandas/03.00-Introduction-to-Pandas
+- file: notebooks/Data_Manipulation_with_Pandas/03.00-Introduction-to-Pandas
   title: Data Manipulation with Pandas
   sections:
-    - file: notebooks/Data Manipulation with Pandas/03.01-Introducing-Pandas-Objects
+    - file: notebooks/Data_Manipulation_with_Pandas/03.01-Introducing-Pandas-Objects
       title: Pandas Objects
-    - file: notebooks/Data Manipulation with Pandas/03.02-Data-Indexing-and-Selection
+    - file: notebooks/Data_Manipulation_with_Pandas/03.02-Data-Indexing-and-Selection
       title: Data Indexing and Selection
-    - file: notebooks/Data Manipulation with Pandas/03.03-Operations-in-Pandas
+    - file: notebooks/Data_Manipulation_with_Pandas/03.03-Operations-in-Pandas
       title: Operations in Pandas
-    - file: notebooks/Data Manipulation with Pandas/03.04-Missing-Values
+    - file: notebooks/Data_Manipulation_with_Pandas/03.04-Missing-Values
       title: Missing Values
-    - file: notebooks/Data Manipulation with Pandas/03.05-Hierarchical-Indexing
+    - file: notebooks/Data_Manipulation_with_Pandas/03.05-Hierarchical-Indexing
       title: Hierarchical Indexing
-    - file: notebooks/Data Manipulation with Pandas/03.06-Concat-And-Append
+    - file: notebooks/Data_Manipulation_with_Pandas/03.06-Concat-And-Append
       title: Concatenation and Append
-    - file: notebooks/Data Manipulation with Pandas/03.07-Merge-and-Join
+    - file: notebooks/Data_Manipulation_with_Pandas/03.07-Merge-and-Join
       title: Merge and Join
-    - file: notebooks/Data Manipulation with Pandas/03.08-Aggregation-and-Grouping
+    - file: notebooks/Data_Manipulation_with_Pandas/03.08-Aggregation-and-Grouping
       title: Aggregation and Grouping
-    - file: notebooks/Data Manipulation with Pandas/03.09-Pivot-Tables
+    - file: notebooks/Data_Manipulation_with_Pandas/03.09-Pivot-Tables
       title: Pivot Tables
-    - file: notebooks/Data Manipulation with Pandas/03.10-Working-With-Strings
+    - file: notebooks/Data_Manipulation_with_Pandas/03.10-Working-With-Strings
       title: Working with Strings
-    - file: notebooks/Data Manipulation with Pandas/03.11-Working-with-Time-Series
+    - file: notebooks/Data_Manipulation_with_Pandas/03.11-Working-with-Time-Series
       title: Time Series
-    - file: notebooks/Data Manipulation with Pandas/03.12-Performance-Eval-and-Query
+    - file: notebooks/Data_Manipulation_with_Pandas/03.12-Performance-Eval-and-Query
       title: Performance and Querying
-    - file: notebooks/Data Manipulation with Pandas/03.13-Further-Resources
+    - file: notebooks/Data_Manipulation_with_Pandas/03.13-Further-Resources
       title: Further Resources
 
 # =====================
 # Matplotlib
 # =====================
-- file: notebooks/Visualization with Matplotlib/04.00-Introduction-To-Matplotlib
+- file: notebooks/Visualization_with_Matplotlib/04.00-Introduction-To-Matplotlib
   title: Visualization with Matplotlib
   sections:
-    - file: notebooks/Visualization with Matplotlib/04.01-Simple-Line-Plots
+    - file: notebooks/Visualization_with_Matplotlib/04.01-Simple-Line-Plots
       title: Simple Line Plots
-    - file: notebooks/Visualization with Matplotlib/04.02-Simple-Scatter-Plots
+    - file: notebooks/Visualization_with_Matplotlib/04.02-Simple-Scatter-Plots
       title: Scatter Plots
-    - file: notebooks/Visualization with Matplotlib/04.03-Errorbars
+    - file: notebooks/Visualization_with_Matplotlib/04.03-Errorbars
       title: Error Bars
-    - file: notebooks/Visualization with Matplotlib/04.04-Density-and-Contour-Plots
+    - file: notebooks/Visualization_with_Matplotlib/04.04-Density-and-Contour-Plots
       title: Density and Contour Plots
-    - file: notebooks/Visualization with Matplotlib/04.05-Histograms-and-Binnings
+    - file: notebooks/Visualization_with_Matplotlib/04.05-Histograms-and-Binnings
       title: Histograms and Binning
-    - file: notebooks/Visualization with Matplotlib/04.06-Customizing-Legends
+    - file: notebooks/Visualization_with_Matplotlib/04.06-Customizing-Legends
       title: Legends
-    - file: notebooks/Visualization with Matplotlib/04.07-Customizing-Colorbars
+    - file: notebooks/Visualization_with_Matplotlib/04.07-Customizing-Colorbars
       title: Colorbars
-    - file: notebooks/Visualization with Matplotlib/04.08-Multiple-Subplots
+    - file: notebooks/Visualization_with_Matplotlib/04.08-Multiple-Subplots
       title: Multiple Subplots
-    - file: notebooks/Visualization with Matplotlib/04.09-Text-and-Annotation
+    - file: notebooks/Visualization_with_Matplotlib/04.09-Text-and-Annotation
       title: Text and Annotation
-    - file: notebooks/Visualization with Matplotlib/04.10-Customizing-Ticks
+    - file: notebooks/Visualization_with_Matplotlib/04.10-Customizing-Ticks
       title: Ticks
-    - file: notebooks/Visualization with Matplotlib/04.11-Settings-and-Stylesheets
+    - file: notebooks/Visualization_with_Matplotlib/04.11-Settings-and-Stylesheets
       title: Stylesheets
-    - file: notebooks/Visualization with Matplotlib/04.12-Three-Dimensional-Plotting
+    - file: notebooks/Visualization_with_Matplotlib/04.12-Three-Dimensional-Plotting
       title: 3D Plotting
-    - file: notebooks/Visualization with Matplotlib/04.14-Visualization-With-Seaborn
+    - file: notebooks/Visualization_with_Matplotlib/04.14-Visualization-With-Seaborn
       title: Visualization with Seaborn
-    - file: notebooks/Visualization with Matplotlib/04.15-Further-Resources
+    - file: notebooks/Visualization_with_Matplotlib/04.15-Further-Resources
       title: Further Resources
 
 # =====================
 # Machine Learning
 # =====================
-- file: notebooks/Machine Learning/05.00-Machine-Learning
+- file: notebooks/Machine_Learning/05.00-Machine-Learning
   title: Machine Learning
   sections:
-    - file: notebooks/Machine Learning/05.01-What-Is-Machine-Learning
+    - file: notebooks/Machine_Learning/05.01-What-Is-Machine-Learning
       title: What Is Machine Learning
-    - file: notebooks/Machine Learning/05.02-Introducing-Scikit-Learn
+    - file: notebooks/Machine_Learning/05.02-Introducing-Scikit-Learn
       title: Introducing Scikit-Learn
-    - file: notebooks/Machine Learning/05.03-Hyperparameters-and-Model-Validation
+    - file: notebooks/Machine_Learning/05.03-Hyperparameters-and-Model-Validation
       title: Hyperparameters and Model Validation
-    - file: notebooks/Machine Learning/05.04-Feature-Engineering
+    - file: notebooks/Machine_Learning/05.04-Feature-Engineering
       title: Feature Engineering
-    - file: notebooks/Machine Learning/05.05-Naive-Bayes
+    - file: notebooks/Machine_Learning/05.05-Naive-Bayes
       title: Naive Bayes
-    - file: notebooks/Machine Learning/05.06-Linear-Regression
+    - file: notebooks/Machine_Learning/05.06-Linear-Regression
       title: Linear Regression
-    - file: notebooks/Machine Learning/05.07-Support-Vector-Machines
+    - file: notebooks/Machine_Learning/05.07-Support-Vector-Machines
       title: Support Vector Machines
-    - file: notebooks/Machine Learning/05.08-Random-Forests
+    - file: notebooks/Machine_Learning/05.08-Random-Forests
       title: Random Forests
-    - file: notebooks/Machine Learning/05.09-Principal-Component-Analysis
+    - file: notebooks/Machine_Learning/05.09-Principal-Component-Analysis
       title: PCA
-    - file: notebooks/Machine Learning/05.10-Manifold-Learning
+    - file: notebooks/Machine_Learning/05.10-Manifold-Learning
       title: Manifold Learning
-    - file: notebooks/Machine Learning/05.11-K-Means
+    - file: notebooks/Machine_Learning/05.11-K-Means
       title: K-Means
-    - file: notebooks/Machine Learning/05.12-Gaussian-Mixtures
+    - file: notebooks/Machine_Learning/05.12-Gaussian-Mixtures
       title: Gaussian Mixtures
-    - file: notebooks/Machine Learning/05.13-Kernel-Density-Estimation
+    - file: notebooks/Machine_Learning/05.13-Kernel-Density-Estimation
       title: Kernel Density Estimation
-    - file: notebooks/Machine Learning/05.14-Image-Features
+    - file: notebooks/Machine_Learning/05.14-Image-Features
       title: Image Features
-    - file: notebooks/Machine Learning/05.15-Learning-More
+    - file: notebooks/Machine_Learning/05.15-Learning-More
       title: Learning More
 
 # =====================
