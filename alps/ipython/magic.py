@@ -269,7 +269,7 @@ class MagicHandler:
         """Print working directory"""
         cwd = os.getcwd()
         print(cwd)
-        return cwd
+        return
     
     def _magic_cd(self, args: str) -> None:
         """Change directory (now supports bookmarks and history)"""
