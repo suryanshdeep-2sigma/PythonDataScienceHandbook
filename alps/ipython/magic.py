@@ -32,11 +32,16 @@ class MagicHandler:
         self.last_execution_time = None
         self.xmode = 'context' 
         
-        # 1. Save original traceback functions
+        # --- NEW: State for Tier B commands ---
+        self._dh = [os.getcwd()]  # Directory history stack
+        self._bookmarks = {}      # Bookmarks dictionary
+        # --------------------------------------
+
+        # Save original traceback functions
         self._orig_format_exception = traceback.format_exception
         self._orig_print_exception = traceback.print_exception
         
-        # 2. Monkeypatch traceback module
+        # Monkeypatch traceback module
         # This ensures that ANYTIME an error is printed (by Pyodide or you),
         # it goes through our logic to support %xmode
         traceback.format_exception = self._custom_format_exception
@@ -171,6 +176,94 @@ class MagicHandler:
             return f"{timespan * 1e9:.{precision}f} ns"
 
     # ============ LINE MAGICS ============
+
+    def _magic_lsmagic(self, args: str) -> None:
+        """List currently available magic functions."""
+        line_magics = sorted([m.replace('_magic_', '%') for m in dir(self) if m.startswith('_magic_')])
+        cell_magics = sorted([m.replace('_cell_magic_', '%%') for m in dir(self) if m.startswith('_cell_magic_')])
+        
+        print("Available line magics:")
+        print("  " + "  ".join(line_magics))
+        print("\nAvailable cell magics:")
+        print("  " + "  ".join(cell_magics))
+    
+    def _magic_history(self, args: str) -> None:
+        """
+        Print input history (_i<n> variables).
+        Note: This relies on your worker/execution loop populating 'In' or '_i' variables.
+        """
+        ns = self._get_caller_namespace()
+        
+        # Method 1: Check standard IPython 'In' list
+        if 'In' in ns and isinstance(ns['In'], list):
+            # args can be a slice like "1-5", simplified here to just dumping all
+            for idx, cmd in enumerate(ns['In']):
+                if cmd.strip(): print(f"{idx}: {cmd}")
+            return
+
+        # Method 2: Check standard IPython history list '_ih'
+        if '_ih' in ns and isinstance(ns['_ih'], list):
+            for idx, cmd in enumerate(ns['_ih']):
+                if cmd.strip(): print(f"{idx}: {cmd}")
+            return
+            
+        print("History not found. (Ensure your execution loop populates 'In' or '_ih')")
+    
+    def _magic_who_ls(self, args: str) -> list[str]:
+        """Return a sorted list of all interactive variables."""
+        namespace = self._get_caller_namespace()
+        user_vars = [k for k in namespace.keys() 
+                     if not k.startswith('_') 
+                     and k not in ['In', 'Out', '__builtins__', 'exit', 'quit']]
+        return sorted(user_vars)
+    
+    def _magic_dhist(self, args: str) -> None:
+        """Print your directory history."""
+        for i, path in enumerate(self._dh):
+            print(f"{i}: {path}")
+
+    def _magic_bookmark(self, args: str) -> None:
+        """
+        Manage filesystem bookmarks.
+        Usage: 
+          %bookmark <name>       - set bookmark for current dir
+          %bookmark <name> <dir> - set bookmark for specific dir
+          %bookmark -l           - list all bookmarks
+          %bookmark -d <name>    - delete bookmark
+        """
+        args_list = args.strip().split()
+        
+        if not args_list:
+            print("Usage: %bookmark <name> [dir] | -l | -d <name>")
+            return
+
+        if args_list[0] == '-l':
+            if not self._bookmarks:
+                print("No bookmarks.")
+            else:
+                for name, path in self._bookmarks.items():
+                    print(f"{name} -> {path}")
+            return
+
+        if args_list[0] == '-d':
+            if len(args_list) < 2:
+                print("Usage: %bookmark -d <name>")
+            elif args_list[1] in self._bookmarks:
+                del self._bookmarks[args_list[1]]
+                print(f"Bookmark '{args_list[1]}' deleted.")
+            else:
+                print(f"Bookmark '{args_list[1]}' not found.")
+            return
+
+        # Set bookmark
+        name = args_list[0]
+        if len(args_list) > 1:
+            target_dir = args_list[1]
+        else:
+            target_dir = os.getcwd()
+            
+        self._bookmarks[name] = target_dir
+        print(f"Bookmark '{name}' set to {target_dir}")
     
     def _magic_pwd(self, args: str) -> str:
         """Print working directory"""
@@ -179,14 +272,31 @@ class MagicHandler:
         return cwd
     
     def _magic_cd(self, args: str) -> None:
-        """Change directory"""
+        """Change directory (now supports bookmarks and history)"""
         path = args.strip()
+        
+        # 1. Handle bookmarks
+        if path in self._bookmarks:
+            path = self._bookmarks[path]
+            print(f"(bookmark:{path})")
+        
+        # 2. Handle standard paths
         if not path:
             path = os.path.expanduser("~")
         
         try:
             os.chdir(path)
-            print(os.getcwd())
+            cwd = os.getcwd()
+            
+            # 3. Update Directory History (Only if different from last)
+            if not self._dh or self._dh[-1] != cwd:
+                self._dh.append(cwd)
+                
+            print(cwd)
+        except FileNotFoundError:
+            print(f"Error: Directory or bookmark not found: {path}", file=sys.stderr)
+        except PermissionError:
+            print(f"Error: Permission denied: {path}", file=sys.stderr)
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)
     
