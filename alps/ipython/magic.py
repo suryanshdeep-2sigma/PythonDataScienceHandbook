@@ -190,24 +190,72 @@ class MagicHandler:
     def _magic_history(self, args: str) -> None:
         """
         Print input history (_i<n> variables).
-        Note: This relies on your worker/execution loop populating 'In' or '_i' variables.
+        Usage:
+          %history          - list all history
+          %history -l 5     - list last 5 commands
+          %history -n 10-15 - list commands from index 10 to 15
+          %history 5-10     - implicit range (same as -n)
         """
         ns = self._get_caller_namespace()
         
-        # Method 1: Check standard IPython 'In' list
-        if 'In' in ns and isinstance(ns['In'], list):
-            # args can be a slice like "1-5", simplified here to just dumping all
-            for idx, cmd in enumerate(ns['In']):
-                if cmd.strip(): print(f"{idx}: {cmd}")
+        # Try to find the history list
+        history = ns.get('In') or ns.get('_ih')
+        if not isinstance(history, list):
+            print("History not found. (Ensure execution loop populates 'In' or '_ih')")
             return
 
-        # Method 2: Check standard IPython history list '_ih'
-        if '_ih' in ns and isinstance(ns['_ih'], list):
-            for idx, cmd in enumerate(ns['_ih']):
-                if cmd.strip(): print(f"{idx}: {cmd}")
-            return
+        # Default: Show everything
+        start_idx = 0
+        end_idx = len(history)
+        
+        # Parse arguments
+        tokens = args.strip().split()
+        
+        try:
+            if '-l' in tokens:
+                # CASE: Last N lines (%history -l 3)
+                idx = tokens.index('-l')
+                if idx + 1 < len(tokens):
+                    count = int(tokens[idx+1])
+                    start_idx = max(0, len(history) - count)
+                    end_idx = len(history)
             
-        print("History not found. (Ensure your execution loop populates 'In' or '_ih')")
+            elif '-n' in tokens:
+                # CASE: Specific Range (%history -n 1-5)
+                idx = tokens.index('-n')
+                if idx + 1 < len(tokens):
+                    range_str = tokens[idx+1]
+                    if '-' in range_str:
+                        s, e = map(int, range_str.split('-'))
+                        start_idx = s
+                        end_idx = e + 1  # Make it inclusive
+                    else:
+                        start_idx = int(range_str)
+                        end_idx = start_idx + 1
+            
+            elif tokens:
+                # CASE: Implicit Range (%history 1-5)
+                first_arg = tokens[0]
+                if '-' in first_arg:
+                    s, e = map(int, first_arg.split('-'))
+                    start_idx = s
+                    end_idx = e + 1
+                elif first_arg.isdigit():
+                    start_idx = int(first_arg)
+                    end_idx = start_idx + 1
+                    
+        except ValueError:
+            print("Error: Invalid arguments. Use -l <n> or -n <start>-<end>", file=sys.stderr)
+            return
+
+        # Print the loop
+        # We verify bounds to prevent crashing if user asks for index 1000
+        for i in range(start_idx, end_idx):
+            if 0 <= i < len(history):
+                cmd = history[i]
+                # Only print if not empty/whitespace
+                if cmd.strip(): 
+                    print(f"{i}: {cmd}")
     
     def _magic_who_ls(self, args: str) -> list[str]:
         """Return a sorted list of all interactive variables."""
