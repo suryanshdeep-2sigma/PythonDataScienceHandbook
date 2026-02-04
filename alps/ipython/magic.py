@@ -784,16 +784,37 @@ class MagicHandler:
             traceback.print_exc()
             
     def _cell_magic_writefile(self, content: str) -> None:
-        lines = content.split('\n', 1)
-        filename = lines[0].strip()
-        if not filename:
-            print("Error: No filename specified", file=sys.stderr)
-            return
+        """
+        Write content to a file.
+        Usage: %%writefile [-a] <filename>
+        """
+        # Split arguments (first line) from content (rest)
+        if '\n' in content:
+            first_line, body = content.split('\n', 1)
+        else:
+            first_line, body = content, ""
+
+        args = first_line.strip().split()
+        if not args:
+            print("Error: No filename specified", file=sys.stderr); return
+
+        mode = 'w'
         
+        # Handle append flag
+        if '-a' in args:
+            mode = 'a'
+            args.remove('-a')
+        
+        if not args:
+            print("Error: No filename specified", file=sys.stderr); return
+            
+        filename = args[0]
+
         try:
-            with open(filename, 'w') as f:
-                f.write(lines[1] if len(lines) > 1 else "")
-            print(f"Writing {filename}")
+            with open(filename, mode) as f:
+                f.write(body)
+            action = "Appending to" if mode == 'a' else "Writing"
+            print(f"{action} {filename}")
         except Exception as e:
             print(f"Error writing file: {e}", file=sys.stderr)
 
