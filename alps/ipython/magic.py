@@ -341,31 +341,53 @@ class MagicHandler:
         return
     
     def _magic_cd(self, args: str) -> None:
-        """Change directory (now supports bookmarks and history)"""
-        path = args.strip()
+        """
+        Change directory with history and bookmark support.
+        Usage: cd [-q] <path> | - | -<n>
+        """
+        args_list = args.strip().split()
+        path = ""
+        quiet = False
         
-        # 1. Handle bookmarks
-        if path in self._bookmarks:
-            path = self._bookmarks[path]
-            print(f"(bookmark:{path})")
-        
-        # 2. Handle standard paths
-        if not path:
+        # Parse flags
+        if '-q' in args_list:
+            quiet = True
+            args_list.remove('-q')
+            
+        if not args_list:
             path = os.path.expanduser("~")
+        else:
+            path = args_list[0]
+
+        # 1. Handle History Jumps
+        if path == '-':
+            if len(self._dh) >= 2:
+                path = self._dh[-2]
+            else:
+                print("Error: No previous directory.", file=sys.stderr); return
+        elif path.startswith('-') and path[1:].isdigit():
+            idx = int(path)
+            if abs(idx) < len(self._dh):
+                path = self._dh[idx]
+            else:
+                print(f"Error: History index {idx} out of range.", file=sys.stderr); return
         
+        # 2. Handle Bookmarks
+        elif path in self._bookmarks:
+            path = self._bookmarks[path]
+            if not quiet: print(f"(bookmark:{path})")
+
+        # 3. Perform Change
         try:
             os.chdir(path)
             cwd = os.getcwd()
             
-            # 3. Update Directory History (Only if different from last)
+            # Update History (only if new)
             if not self._dh or self._dh[-1] != cwd:
                 self._dh.append(cwd)
                 
-            print(cwd)
-        except FileNotFoundError:
-            print(f"Error: Directory or bookmark not found: {path}", file=sys.stderr)
-        except PermissionError:
-            print(f"Error: Permission denied: {path}", file=sys.stderr)
+            if not quiet:
+                print(cwd)
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)
     
