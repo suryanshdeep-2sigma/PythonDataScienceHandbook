@@ -23,7 +23,9 @@ import re
 import statistics
 import pdb
 import io
-from typing import Any, Dict, Optional, Tuple
+import cProfile
+import pstats
+from typing import Any, Dict, Optional, Tuple, List
 
 class MagicHandler:
     """Handles execution of magic commands with proper namespace management"""
@@ -34,13 +36,14 @@ class MagicHandler:
         
         self._dh = [os.getcwd()]  # Directory history stack
         self._bookmarks = {}      # Bookmarks dictionary
+        self.aliases = {}         # for storing the aliases for the magic commands
 
         # Save original traceback functions
         self._orig_format_exception = traceback.format_exception
         self._orig_print_exception = traceback.print_exception
         
         # Monkeypatch traceback module
-        # This ensures that ANYTIME an error is printed (by Pyodide or you),
+        # This ensures that ANYTIME an error is printed,
         # it goes through our logic to support %xmode
         traceback.format_exception = self._custom_format_exception
         traceback.print_exception = self._custom_print_exception
@@ -69,6 +72,10 @@ class MagicHandler:
         
     def line_magic(self, command: str, args: str) -> Any:
         """Execute a line magic command"""
+        # check aliases first
+        if command in self.aliases:
+            command = self.aliases[command]
+
         method_name = f"_magic_{command}"
         
         if hasattr(self, method_name):
@@ -80,6 +87,10 @@ class MagicHandler:
     
     def cell_magic(self, command: str, args: str) -> Any:
         """Execute a cell magic command"""
+        # check aliases first
+        if command in self.aliases:
+            command = self.aliases[command]
+        
         method_name = f"_cell_magic_{command}"
         
         if hasattr(self, method_name):
@@ -172,7 +183,19 @@ class MagicHandler:
             return f"{timespan * 1e6:.{precision}f} µs"
         else:
             return f"{timespan * 1e9:.{precision}f} ns"
-
+        
+    def _run_with_profiler(self, code: str, namespace: dict) -> None:
+        """Helper to run code with cProfile and print stats"""
+        prof = cProfile.Profile()
+        try:
+            prof.runctx(code, namespace, namespace)
+            s = io.StringIO()
+            # Sort by cumulative time by default
+            ps = pstats.Stats(prof, stream=s).sort_stats('cumulative')
+            ps.print_stats()
+            print(s.getvalue())
+        except Exception:
+            traceback.print_exc()
     # ============ LINE MAGICS ============
 
     def _magic_lsmagic(self, args: str) -> None:
@@ -563,6 +586,59 @@ class MagicHandler:
         except Exception:
             traceback.print_exc()
     
+    def _magic_prun(self, args: str) -> None:
+        """Run a statement through the python code profiler."""
+        if not args.strip():
+            print("Usage: %prun <statement>")
+            return
+        self._run_with_profiler(args, self._get_caller_namespace())
+    
+    def _magic_reset_selective(self, args: str) -> None:
+        """Clear names from namespace matching a regex."""
+        regex = args.strip()
+        if not regex:
+            print("Usage: %reset_selective <regex>")
+            return
+        
+        try:
+            pattern = re.compile(regex)
+        except re.error as e:
+            print(f"Invalid regex: {e}", file=sys.stderr)
+            return
+
+        ns = self._get_caller_namespace()
+        to_delete = [k for k in ns.keys() 
+                     if not k.startswith('_') 
+                     and k not in ['In', 'Out', '__builtins__'] 
+                     and pattern.search(k)]
+        
+        if not to_delete:
+            print(f"No variables matched regex '{regex}'.")
+            return
+
+        print(f"Deleting: {', '.join(to_delete)}")
+        for var in to_delete:
+            del ns[var]
+
+    def _magic_alias_magic(self, args: str) -> None:
+        """Create an alias for an existing magic."""
+        parts = args.strip().split()
+        if len(parts) != 2:
+            print("Usage: %alias_magic <new_name> <target_name>")
+            return
+        
+        new_name, target = parts
+        new_name = new_name.lstrip('%')
+        target = target.lstrip('%')
+        
+        # Verify target exists
+        if not (hasattr(self, f"_magic_{target}") or hasattr(self, f"_cell_magic_{target}")):
+            print(f"Error: Target magic '{target}' not found.", file=sys.stderr)
+            return
+            
+        self.aliases[new_name] = target
+        print(f"Created alias: %{new_name} -> %{target}")
+    
     ## for matplotlib magics
     def _magic_matplotlib(self, args: str) -> None:
         """
@@ -714,10 +790,11 @@ class MagicHandler:
         namespace['_captured_stdout'] = stdout_capture.getvalue()
         namespace['_captured_stderr'] = stderr_capture.getvalue()
         print(f"Output captured in _captured_stdout and _captured_stderr")
-    
-    def _cell_magic_html(self, content: str) -> None:
-        print("HTML content:")
-        print(content)
+
+    def _cell_magic_prun(self, code: str) -> None:
+        """Run a cell through the python code profiler."""
+        if not code.strip(): return
+        self._run_with_profiler(code, self._get_caller_namespace())
 
 # Create singleton instance
 _handler = MagicHandler()
