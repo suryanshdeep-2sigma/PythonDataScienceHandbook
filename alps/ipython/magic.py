@@ -32,10 +32,8 @@ class MagicHandler:
         self.last_execution_time = None
         self.xmode = 'context' 
         
-        # --- NEW: State for Tier B commands ---
         self._dh = [os.getcwd()]  # Directory history stack
         self._bookmarks = {}      # Bookmarks dictionary
-        # --------------------------------------
 
         # Save original traceback functions
         self._orig_format_exception = traceback.format_exception
@@ -524,7 +522,7 @@ class MagicHandler:
     def _magic_pip(self, args: str):
         """Install packages using micropip"""
         try:
-            import micropip
+            import micropip # type: ignore
         except ImportError:
             print("Error: micropip not available", file=sys.stderr)
             return None
@@ -564,6 +562,49 @@ class MagicHandler:
                 exec(f.read(), namespace)
         except Exception:
             traceback.print_exc()
+    
+    ## for matplotlib magics
+    def _magic_matplotlib(self, args: str) -> None:
+        """
+        Set the matplotlib backend.
+        Usage: %matplotlib [inline|widget|notebook]
+        """
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError:
+            print("Matplotlib is not installed.", file=sys.stderr)
+            return
+
+        arg = args.strip().lower()
+        
+        if not arg:
+            print(f"Using matplotlib backend: {plt.get_backend()}")
+            return
+
+        if arg == 'inline':
+            try:
+                # In Pyodide, 'Agg' is often used to render to buffer
+                plt.switch_backend('Agg') 
+                print("Backend set to 'Agg' (inline equivalent)")
+            except Exception as e:
+                print(f"Error setting backend: {e}", file=sys.stderr)
+
+        elif arg in ['widget', 'ipympl']:
+            try:
+                import ipympl
+                plt.switch_backend('module://ipympl.backend_nbagg')
+                print("Backend set to 'ipympl' (widget)")
+            except ImportError:
+                print("Error: 'ipympl' not installed.", file=sys.stderr)
+            except Exception as e:
+                print(f"Error setting backend: {e}", file=sys.stderr)
+        
+        else:
+            print(f"Warning: Backend '{arg}' not fully supported. Trying anyway...", file=sys.stderr)
+            try:
+                plt.switch_backend(arg)
+            except Exception as e:
+                print(f"Error: {e}", file=sys.stderr)
 
     def _magic_reset(self, args: str) -> None:
         """Reset the namespace"""
