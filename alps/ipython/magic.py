@@ -23,6 +23,7 @@ import re
 import statistics
 import pdb
 import io
+import shutil
 import cProfile
 import pstats
 from typing import Any, Dict, Optional, Tuple, List
@@ -33,7 +34,7 @@ class MagicHandler:
     def __init__(self):
         self.last_execution_time = None
         self.xmode = 'context' 
-        
+        self.auto_pdb = False     # Toggle for %pdb on
         self._dh = [os.getcwd()]  # Directory history stack
         self._bookmarks = {}      # Bookmarks dictionary
         self.aliases = {}         # for storing the aliases for the magic commands
@@ -65,10 +66,6 @@ class MagicHandler:
             # Fallback for direct calls or shallower stacks
             frame = sys._getframe(3)
 
-        # Merge globals and locals (Locals must overwrite globals)
-        # ns = frame.f_globals.copy()
-        # ns.update(frame.f_locals)
-        # return ns
         return frame.f_globals
         
     def line_magic(self, command: str, args: str) -> Any:
@@ -100,7 +97,85 @@ class MagicHandler:
         else:
             print(f"UsageError: Cell magic function `%%{command}` not found.", file=sys.stderr)
             return None
-            
+        
+    
+    # ============ SHELL COMMANDS ===============
+    def _magic_cat(self, args: str) -> None:
+        """Print the contents of a file. Usage: %cat filename"""
+        fn = args.strip()
+        if not fn: print("Usage: %cat <filename>"); return
+        if not os.path.exists(fn): print(f"cat: {fn}: No such file", file=sys.stderr); return
+        try:
+            with open(fn, 'r') as f: print(f.read())
+        except Exception as e: print(f"Error: {e}", file=sys.stderr)
+
+    def _magic_mkdir(self, args: str) -> None:
+        """Create a directory. Usage: %mkdir [-p] <path>"""
+        args_list = args.strip().split()
+        if not args_list: print("Usage: %mkdir <path>"); return
+        path = args_list[-1]
+        try:
+            os.makedirs(path, exist_ok='-p' in args_list)
+            print(f"Created directory: {path}")
+        except Exception as e: print(f"Error: {e}", file=sys.stderr)
+
+    def _magic_rmdir(self, args: str) -> None:
+        """Remove a directory. Usage: %rmdir <path>"""
+        path = args.strip()
+        if not path: print("Usage: %rmdir <path>"); return
+        try:
+            os.rmdir(path)
+            print(f"Removed directory: {path}")
+        except Exception as e: print(f"Error: {e}", file=sys.stderr)
+
+    def _magic_rm(self, args: str) -> None:
+        """Remove a file. Usage: %rm <path>"""
+        # Simple implementation: does not support -rf yet for safety, unless requested
+        path = args.strip()
+        if not path: print("Usage: %rm <path>"); return
+        try:
+            if os.path.isdir(path):
+                print(f"rm: cannot remove '{path}': Is a directory. Use %rmdir.", file=sys.stderr)
+            else:
+                os.remove(path)
+                print(f"Removed: {path}")
+        except Exception as e: print(f"Error: {e}", file=sys.stderr)
+
+    def _magic_cp(self, args: str) -> None:
+        """Copy files. Usage: %cp <src> <dest>"""
+        parts = shlex.split(args)
+        if len(parts) != 2: print("Usage: %cp <src> <dest>"); return
+        try:
+            shutil.copy2(parts[0], parts[1])
+            print(f"Copied {parts[0]} -> {parts[1]}")
+        except Exception as e: print(f"Error: {e}", file=sys.stderr)
+
+    def _magic_mv(self, args: str) -> None:
+        """Move files. Usage: %mv <src> <dest>"""
+        parts = shlex.split(args)
+        if len(parts) != 2: print("Usage: %mv <src> <dest>"); return
+        try:
+            shutil.move(parts[0], parts[1])
+            print(f"Moved {parts[0]} -> {parts[1]}")
+        except Exception as e: print(f"Error: {e}", file=sys.stderr)
+
+    def _magic_echo(self, args: str) -> None:
+        """Print arguments. Usage: %echo <text>"""
+        # Expand environment variables like $HOME
+        print(os.path.expandvars(args))
+
+    def _magic_env(self, args: str) -> None:
+        """List or set environment vars. Usage: %env [key=value]"""
+        if not args.strip():
+            for k, v in os.environ.items(): print(f"{k}={v}")
+            return
+        if '=' in args:
+            k, v = args.split('=', 1)
+            os.environ[k.strip()] = v.strip()
+            print(f"env: {k.strip()}={v.strip()}")
+        else:
+            print(os.environ.get(args.strip(), ""))
+    
     # ============ EXCEPTION HANDLING ============
     def _normalize_exception_args(self, exc, value=None, tb=None):
         """Helper to handle Python 3.10+ single-argument exception calls"""
@@ -148,6 +223,11 @@ class MagicHandler:
         # Pass normalized args to our custom formatter
         for line in self._custom_format_exception(etype, value, tb, limit=limit, chain=chain):
             print(line, end='', file=f)
+        
+        # PDB AUTO LAUNCH Check
+        if hasattr(self, 'auto_pdb') and self.auto_pdb:
+            print("\n-- Auto-launching pdb --")
+            self._magic_debug("")
 
     def _magic_xmode(self, args: str) -> None:
         """Set exception reporting mode: Plain, Context, or Verbose."""
@@ -197,6 +277,7 @@ class MagicHandler:
             print(s.getvalue())
         except Exception:
             traceback.print_exc()
+            
     # ============ LINE MAGICS ============
 
     def _magic_lsmagic(self, args: str) -> None:
@@ -208,6 +289,41 @@ class MagicHandler:
         print("  " + "  ".join(line_magics))
         print("\nAvailable cell magics:")
         print("  " + "  ".join(cell_magics))
+
+    def _magic_magic(self, args: str) -> None:
+        """Print information about the magic system."""
+        print("IPython-style Magic System for ALPS")
+        print("======================================")
+        print("Supported Line Magics (%):")
+        print("  cd, pwd, ls, cp, mv, rm, mkdir, rmdir, cat, echo")
+        print("  env, time, timeit, prun, debug, pdb, who, whos, history")
+        print("  pip, matplotlib, reset_selective (safe), lsmagic")
+        print("\nSupported Cell Magics (%%):")
+        print("  time, timeit, prun, capture, writefile, file, html")
+        print("\nType %<magic>? for details (not implemented yet, read docs).")
+
+    def _magic_pdb(self, args: str) -> None:
+        """Control automatic debugger. Usage: %pdb [on|off]"""
+        arg = args.strip().lower()
+        if arg == 'on' or arg == '1':
+            self.auto_pdb = True
+            print("Automatic pdb is ON.")
+        elif arg == 'off' or arg == '0':
+            self.auto_pdb = False
+            print("Automatic pdb is OFF.")
+        else:
+            print(f"Automatic pdb is {'ON' if self.auto_pdb else 'OFF'}")
+
+    def _magic_load_ext(self, args: str) -> None:
+        """Load an IPython extension by name."""
+        module_str = args.strip()
+        if not module_str: print("Usage: %load_ext <module_name>"); return
+        try:
+            # Basic emulation: just import it
+            __import__(module_str)
+            print(f"Loaded extension: {module_str} (Simulated via import)")
+        except ImportError:
+            print(f"Error: Extension '{module_str}' not found. Try %pip install {module_str}", file=sys.stderr)
     
     def _magic_history(self, args: str) -> None:
         """
@@ -619,29 +735,49 @@ class MagicHandler:
     def _magic_reset_selective(self, args: str) -> None:
         """Clear names from namespace matching a regex."""
         regex = args.strip()
-        if not regex:
-            print("Usage: %reset_selective <regex>")
-            return
-        
-        try:
-            pattern = re.compile(regex)
-        except re.error as e:
-            print(f"Invalid regex: {e}", file=sys.stderr)
-            return
+        if not regex: print("Usage: %reset_selective <regex>"); return
+        try: pattern = re.compile(regex)
+        except re.error as e: print(f"Invalid regex: {e}", file=sys.stderr); return
 
         ns = self._get_caller_namespace()
+
+
+       # Comprehensive Protection List based on environment
+        PROTECTED = {
+            # 1. Standard Python Internals
+            'In', 'Out', '__builtins__', '__name__', '__doc__', '__package__', 
+            'exit', 'quit', 'get_ipython', 'display', 'sys', 'os', 'io', 'builtins',
+            
+            # 2. Pyodide & JS Bridge
+            'js', 'pyodide', 'pyodide_js', 'globalThis', 'domPort', 
+            'pyodide_http', 'PyodideHTTPAdapter',
+            
+            # 3. Platform Infrastructure & Patches (From your list)
+            'ENV_VARS', 'NGINX_PROXY_BASE_URL', 'TEXTBOOK_ROOT', 'TextbookFinder',
+            'Request', 'apply_proxy_patch', 'bloom_might_contain', 
+            'captured_figures', 'captured_plotly_figures', 'create_backend_proxy_url',
+            'detect_graphics_imports', 'exec_and_print_last', 'find_imports', 
+            'find_missing_packages', 'flush_matplotlib', 'has_datascience', 
+            'has_matplotlib', 'has_plotly', 'import_names_to_package_names', 
+            'input_fixed', 'install_datascience_proxies', 'install_graphics_proxies', 
+            'intercept_url', 'matplotlib_proxy_installed', 'mock_prompt', 
+            'patched_opener_open', 'patched_pyodide_adapter_send', 'patched_show', 
+            'patched_urlopen', 'plotly_proxy_installed', 'proxy_auth_code', 
+            'setup_matplotlib_proxy', 'setup_plotly_proxy', 'should_proxy_url', 
+            'to_package', 'uint8_to_base64_url'
+        }
+
         to_delete = [k for k in ns.keys() 
                      if not k.startswith('_') 
-                     and k not in ['In', 'Out', '__builtins__'] 
+                     and k not in PROTECTED 
                      and pattern.search(k)]
         
-        if not to_delete:
-            print(f"No variables matched regex '{regex}'.")
-            return
+        if not to_delete: print(f"No matches for '{regex}'"); return
 
-        print(f"Deleting: {', '.join(to_delete)}")
         for var in to_delete:
-            del ns[var]
+            try: del ns[var]
+            except: pass
+        print(f"Deleted {len(to_delete)} variable(s).")
 
     def _magic_alias_magic(self, args: str) -> None:
         """Create an alias for an existing magic."""
@@ -704,37 +840,6 @@ class MagicHandler:
                 plt.switch_backend(arg)
             except Exception as e:
                 print(f"Error: {e}", file=sys.stderr)
-
-    def _magic_reset(self, args: str) -> None:
-        """
-        Reset the namespace.
-        Usage: %reset -f
-        """
-        ns = self._get_caller_namespace()
-        
-        # Filter variables to delete (exclude internals)
-        to_delete = [k for k in ns.keys() if not k.startswith('_') 
-                     and k not in ['In', 'Out', '__builtins__', '__name__', '__doc__', 'exit', 'quit', 'get_ipython']]
-        
-        if not to_delete:
-            print("Interactive namespace is already empty.")
-            return
-
-        # CRITICAL FIX: Avoid input(). strictly require -f flag.
-        # interactive input() often causes deadlocks in web workers.
-        if '-f' not in args:
-            print(f"Error: You must use -f to confirm deletion of {len(to_delete)} variables.")
-            print("Usage: %reset -f")
-            return
-        
-        # Perform deletion on the REAL namespace
-        count = 0
-        for var in to_delete:
-            try: 
-                del ns[var]
-                count += 1
-            except: pass
-        print(f"Deleted {count} variable(s).")
 
     # ============ CELL MAGICS ============
     
@@ -849,6 +954,10 @@ class MagicHandler:
         """Run a cell through the python code profiler."""
         if not code.strip(): return
         self._run_with_profiler(code, self._get_caller_namespace())
+    
+    # ALIASES
+    def _cell_magic_file(self, content: str) -> None: self._cell_magic_writefile(content)
+    def _magic_more(self, args: str) -> None: self._magic_cat(args)
 
 # Create singleton instance
 _handler = MagicHandler()
