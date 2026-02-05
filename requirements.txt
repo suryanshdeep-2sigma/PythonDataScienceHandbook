@@ -30,6 +30,3 @@ netcdf4>=1.6
 # Optional but commonly required
 tqdm>=4.66
 pyyaml>=6.0
-
-# for library import
-micropip

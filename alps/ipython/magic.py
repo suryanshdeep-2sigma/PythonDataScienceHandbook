@@ -66,9 +66,10 @@ class MagicHandler:
             frame = sys._getframe(3)
 
         # Merge globals and locals (Locals must overwrite globals)
-        ns = frame.f_globals.copy()
-        ns.update(frame.f_locals)
-        return ns
+        # ns = frame.f_globals.copy()
+        # ns.update(frame.f_locals)
+        # return ns
+        return frame.f_globals
         
     def line_magic(self, command: str, args: str) -> Any:
         """Execute a line magic command"""
@@ -705,25 +706,35 @@ class MagicHandler:
                 print(f"Error: {e}", file=sys.stderr)
 
     def _magic_reset(self, args: str) -> None:
-        """Reset the namespace"""
-        namespace = self._get_caller_namespace()
-        to_delete = [k for k in namespace.keys() if not k.startswith('_') 
-                     and k not in ['In', 'Out', '__builtins__', '__name__', '__doc__']]
+        """
+        Reset the namespace.
+        Usage: %reset -f
+        """
+        ns = self._get_caller_namespace()
+        
+        # Filter variables to delete (exclude internals)
+        to_delete = [k for k in ns.keys() if not k.startswith('_') 
+                     and k not in ['In', 'Out', '__builtins__', '__name__', '__doc__', 'exit', 'quit', 'get_ipython']]
         
         if not to_delete:
             print("Interactive namespace is already empty.")
             return
 
+        # CRITICAL FIX: Avoid input(). strictly require -f flag.
+        # interactive input() often causes deadlocks in web workers.
         if '-f' not in args:
-            print(f"Once deleted, variables cannot be recovered. Proceed (y/[n])? ", end='')
-            try:
-                if input().lower() != 'y': return
-            except: return
+            print(f"Error: You must use -f to confirm deletion of {len(to_delete)} variables.")
+            print("Usage: %reset -f")
+            return
         
+        # Perform deletion on the REAL namespace
+        count = 0
         for var in to_delete:
-            try: del namespace[var]
+            try: 
+                del ns[var]
+                count += 1
             except: pass
-        print(f"Deleted {len(to_delete)} variable(s).")
+        print(f"Deleted {count} variable(s).")
 
     # ============ CELL MAGICS ============
     
